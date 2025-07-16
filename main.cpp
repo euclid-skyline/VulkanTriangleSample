@@ -151,10 +151,11 @@ private:
         if (enableValidationLayers) {
             extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
-
+    #ifndef NDEBUG
         for (const char* extension : extensions) {
             std::cout << "Required extension: " << extension << std::endl;
 		}
+    #endif // !NDEBUG
 
         return extensions;
     }
