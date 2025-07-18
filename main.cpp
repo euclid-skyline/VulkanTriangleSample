@@ -90,6 +90,8 @@ private:
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
     std::vector<VkFramebuffer> swapChainFramebuffers;
+    VkCommandPool commandPool;
+    VkCommandBuffer commandBuffer;
     
     void initWindow() {
         glfwInit();
@@ -111,6 +113,8 @@ private:
         createRenderPass();
         createGraphicsPipeline();
         createFramebuffers();
+        createCommandPool();
+		createCommandBuffer();
     }
 
     void mainLoop() {
@@ -120,6 +124,8 @@ private:
     }
 
     void cleanup() {
+        vkDestroyCommandPool(device, commandPool, nullptr);
+
         for (auto framebuffer : swapChainFramebuffers) {
             vkDestroyFramebuffer(device, framebuffer, nullptr);
         }
@@ -554,6 +560,80 @@ private:
                 throw std::runtime_error("failed to create framebuffer!");
             }
         }
+    }
+
+    void createCommandPool() {
+        QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // Optional, allows command buffers to be reset individually
+		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value(); // Select the graphics queue family for command pool creation
+		// Create the command pool for the graphics queue family
+        if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create command pool!");
+        }
+	}
+
+    void createCommandBuffer() {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = commandPool; // Use the command pool created earlier
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // Primary command buffer
+        allocInfo.commandBufferCount = 1; // Allocate one command buffer
+		// Allocate the command buffer from the command pool
+        if (vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate command buffer!");
+		}
+    }
+
+    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+		// 1. Begin recording the command buffer
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = 0; // Optional
+        beginInfo.pInheritanceInfo = nullptr; // Optional
+        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+            throw std::runtime_error("failed to begin recording command buffer!");
+        }
+		// 2. Specify the render pass and framebuffer to begin rendering
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = renderPass;
+        renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
+		// 3. Set the render area to the size of the swap chain extent
+        renderPassInfo.renderArea.offset = { 0, 0 };
+        renderPassInfo.renderArea.extent = swapChainExtent;
+		// 4. Clear color value for the attachment
+        VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+		// 5. Begin the render pass
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		// 6. Bind the graphics pipeline
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		// 7. Set the viewport and scissor dynamically
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(swapChainExtent.width);
+        viewport.height = static_cast<float>(swapChainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+		// 8. Set the scissor rectangle to cover the entire swap chain extent
+        VkRect2D scissor{};
+        scissor.offset = { 0, 0 };
+        scissor.extent = swapChainExtent;
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+        // 9. Draw the triangle (or any geometry) using the graphics pipeline
+		vkCmdDraw(commandBuffer, 3, 1, 0, 0); // Drawing a triangle with 3 vertices
+		// 10. End the render pass
+        vkCmdEndRenderPass(commandBuffer);
+		// 11. End the command buffer recording
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+            throw std::runtime_error("failed to record command buffer!");
+		}   
     }
 
     VkShaderModule createShaderModule(const std::vector<char>& code) {
