@@ -86,6 +86,7 @@ private:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
+    VkPipelineLayout pipelineLayout;
     
     void initWindow() {
         glfwInit();
@@ -114,6 +115,8 @@ private:
     }
 
     void cleanup() {
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
         for (auto imageView : swapChainImageViews) {
             vkDestroyImageView(device, imageView, nullptr);
         }
@@ -371,6 +374,90 @@ private:
         fragShaderStageInfo.pName = "main";
 		// 3. Shader stages array
 		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+        // 4. Vertex input state
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInputInfo.vertexBindingDescriptionCount = 0; // Optional, can be omitted if no vertex attributes are used
+        vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional, can be omitted if no vertex attributes are used
+        vertexInputInfo.vertexAttributeDescriptionCount = 0; // Optional, can be omitted if no vertex attributes are used
+		vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional, can be omitted if no vertex attributes are used
+        // 5. Input assembly state
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+        inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; // Specify the topology of the geometry
+		inputAssembly.primitiveRestartEnable = VK_FALSE; // Primitive restart is not enabled
+		// 6. Viewport state & scissor state
+        VkPipelineViewportStateCreateInfo viewportState{};
+        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewportState.viewportCount = 1;
+        viewportState.scissorCount = 1;
+
+		// 7. Dynamic state for viewport and scissor
+        std::vector<VkDynamicState> dynamicStates = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR
+        };
+        VkPipelineDynamicStateCreateInfo dynamicState{};
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+        dynamicState.pDynamicStates = dynamicStates.data();
+
+		// 8. Rasterization state
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.depthClampEnable = VK_FALSE; // Disable depth clamping
+        rasterizer.rasterizerDiscardEnable = VK_FALSE; // Enable rasterization
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // Fill polygons
+        rasterizer.lineWidth = 1.0f; // Line width
+        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT; // Cull back faces
+        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE; // Specify front face orientation
+		rasterizer.depthBiasEnable = VK_FALSE; // Disable depth bias
+        rasterizer.depthBiasConstantFactor = 0.0f; // Depth bias constant factor
+        rasterizer.depthBiasClamp = 0.0f; // Depth bias clamp
+		rasterizer.depthBiasSlopeFactor = 0.0f; // Depth bias slope factor  
+        // 9. Multisampling state
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sampleShadingEnable = VK_FALSE; // Disable sample shading
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT; // Use 1 sample per pixel
+        multisampling.minSampleShading = 1.0f; // Minimum sample shading
+        multisampling.pSampleMask = nullptr; // No sample mask
+        multisampling.alphaToCoverageEnable = VK_FALSE; // Disable alpha to coverage
+		multisampling.alphaToOneEnable = VK_FALSE; // Disable alpha to one
+        // 10. Color blending state
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT; // Write all color components
+        colorBlendAttachment.blendEnable = VK_FALSE; // Disable blending
+        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Source color blend factor
+        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Destination color blend factor
+        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Color blend operation
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Source alpha blend factor
+        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Destination alpha blend factor
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Alpha blend operation
+
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.logicOpEnable = VK_FALSE; // Disable logic operations
+        colorBlending.logicOp = VK_LOGIC_OP_COPY; // Logic operation (not used here)
+        colorBlending.attachmentCount = 1; // Number of color blend attachments
+        colorBlending.pAttachments = &colorBlendAttachment; // Color blend attachment
+        colorBlending.blendConstants[0] = 0.0f; // Blend constant 0
+        colorBlending.blendConstants[1] = 0.0f; // Blend constant 1
+        colorBlending.blendConstants[2] = 0.0f; // Blend constant 2
+		colorBlending.blendConstants[3] = 0.0f; // Blend constant 3
+
+        // 11. Pipeline layout
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutInfo.setLayoutCount = 0; // No descriptor sets used in this example
+        pipelineLayoutInfo.pSetLayouts = nullptr; // No descriptor sets used in this example
+        pipelineLayoutInfo.pushConstantRangeCount = 0; // No push constants used in this example
+        pipelineLayoutInfo.pPushConstantRanges = nullptr; // No push constants used in this example
+        if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create pipeline layout!");
+		}
+
+
 
 		// End of the graphics pipeline creation. 
         // Should be followed by cleanup of shader modules.
