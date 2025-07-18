@@ -88,6 +88,7 @@ private:
     std::vector<VkImageView> swapChainImageViews;
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
+    VkPipeline graphicsPipeline;
     
     void initWindow() {
         glfwInit();
@@ -117,6 +118,7 @@ private:
     }
 
     void cleanup() {
+        vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroyRenderPass(device, renderPass, nullptr);
 
@@ -495,7 +497,28 @@ private:
             throw std::runtime_error("failed to create pipeline layout!");
 		}
 
-
+        // 12. Graphics pipeline creation info
+        VkGraphicsPipelineCreateInfo pipelineInfo{};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.stageCount = 2; // Number of shader stages
+        pipelineInfo.pStages = shaderStages; // Pointer to the shader stages
+        pipelineInfo.pVertexInputState = &vertexInputInfo; // Vertex input state
+        pipelineInfo.pInputAssemblyState = &inputAssembly; // Input assembly state
+        pipelineInfo.pViewportState = &viewportState; // Viewport and scissor state
+        pipelineInfo.pRasterizationState = &rasterizer; // Rasterization state
+        pipelineInfo.pMultisampleState = &multisampling; // Multisampling state
+        pipelineInfo.pDepthStencilState = nullptr; // Optional
+        pipelineInfo.pColorBlendState = &colorBlending; // Color blending state
+        pipelineInfo.pDynamicState = &dynamicState; // Dynamic state (optional)
+        pipelineInfo.layout = pipelineLayout; // Pipeline layout
+		pipelineInfo.renderPass = renderPass; // Render pass
+        pipelineInfo.subpass = 0; // Subpass index
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Base pipeline handle (not used here)
+        pipelineInfo.basePipelineIndex = -1; // Base pipeline index (not used here)
+        
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create graphics pipeline!");
+        }
 
 		// End of the graphics pipeline creation. 
         // Should be followed by cleanup of shader modules.
