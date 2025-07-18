@@ -86,6 +86,7 @@ private:
     VkFormat swapChainImageFormat;
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews;
+    VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
     
     void initWindow() {
@@ -105,6 +106,7 @@ private:
         createLogicalDevice();
         createSwapChain();
         createImageViews();
+        createRenderPass();
         createGraphicsPipeline();
     }
 
@@ -116,6 +118,7 @@ private:
 
     void cleanup() {
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+		vkDestroyRenderPass(device, renderPass, nullptr);
 
         for (auto imageView : swapChainImageViews) {
             vkDestroyImageView(device, imageView, nullptr);
@@ -350,6 +353,41 @@ private:
                 throw std::runtime_error("failed to create image views!");
             }
         }
+    }
+
+    void createRenderPass() {
+		// 1. Create a color attachment description
+        VkAttachmentDescription colorAttachment{};
+        colorAttachment.format = swapChainImageFormat; // Use the format of the swap chain images
+        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT; // No multisampling
+        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // Clear the attachment at the start of the render pass
+        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // Store the result in memory
+        colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; // No stencil buffer used
+        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // No stencil buffer used
+        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // Initial layout of the image
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // Final layout for presentation
+        // 2. Create a color attachment reference
+        VkAttachmentReference colorAttachmentRef{};
+        colorAttachmentRef.attachment = 0; // Index of the color attachment
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // Layout for the color attachment
+		// 3. Create a subpass description
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // This is a graphics pipeline
+        subpass.colorAttachmentCount = 1; // Number of color attachments
+		subpass.pColorAttachments = &colorAttachmentRef; // Pointer to the color attachment reference
+        // 4. Create a render pass
+        VkRenderPassCreateInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassInfo.attachmentCount = 1; // Number of attachments
+        renderPassInfo.pAttachments = &colorAttachment; // Pointer to the color attachment description
+		renderPassInfo.subpassCount = 1; // Number of subpasses
+		renderPassInfo.pSubpasses = &subpass; // Pointer    
+        renderPassInfo.dependencyCount = 0; // No dependencies in this simple example
+        renderPassInfo.pDependencies = nullptr; // Pointer to the dependencies (optional)
+        
+        if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create render pass!");
+		}
     }
 
     void createGraphicsPipeline() {
