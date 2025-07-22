@@ -368,30 +368,30 @@ private:
 
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-		createInfo.surface = surface; // 1 Create swapchain for the surface
-        createInfo.minImageCount = imageCount; // 2 Minimum image count
-        createInfo.imageFormat = surfaceFormat.format; // 3 Image format
-        createInfo.imageColorSpace = surfaceFormat.colorSpace; // 4 Color space
-        createInfo.imageExtent = extent; // 5 Image extent
-        createInfo.imageArrayLayers = 1; // 6 Array layers
-        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // 7 Usage of the images
+		createInfo.surface = surface; // 1. Create swapchain for the surface
+        createInfo.minImageCount = imageCount; // 2. Minimum image count
+        createInfo.imageFormat = surfaceFormat.format; // 3. Image format
+        createInfo.imageColorSpace = surfaceFormat.colorSpace; // 4. Color space
+        createInfo.imageExtent = extent; // 5. Image extent
+        createInfo.imageArrayLayers = 1; // 6. Array layers
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // 7. Usage of the images
         QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
         uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
         if (indices.graphicsFamily != indices.presentFamily) {
-            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT; // 8 Sharing mode for multiple queues
+            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT; // 8. Sharing mode for multiple queues
             createInfo.queueFamilyIndexCount = 2;
-            createInfo.pQueueFamilyIndices = queueFamilyIndices; // 9 Queue family indices
+            createInfo.pQueueFamilyIndices = queueFamilyIndices; // 9. Queue family indices
         }
         else {
-            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // 10 Exclusive sharing mode
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // 10. Exclusive sharing mode
             createInfo.queueFamilyIndexCount = 0; // Optional, can be omitted in this case
             createInfo.pQueueFamilyIndices = nullptr;
         }
         createInfo.preTransform = swapChainSupport.capabilities.currentTransform; // 11 Pre-transform
-        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // 12 Composite alpha
-        createInfo.presentMode = presentMode; // 13 Present mode
-		createInfo.clipped = VK_TRUE; // 14 Clipping behavior
-        createInfo.oldSwapchain = VK_NULL_HANDLE; // 15 Old swapchain, can be null for initial creation
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // 12. Composite alpha
+        createInfo.presentMode = presentMode; // 13. Present mode
+		createInfo.clipped = VK_TRUE; // 14. Clipping behavior
+        createInfo.oldSwapchain = VK_NULL_HANDLE; // 15. Old swapchain, can be null for initial creation
         
         if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
             throw std::runtime_error("failed to create swap chain!");
@@ -902,6 +902,7 @@ private:
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
+        /*
         std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
         for (const auto& extension : availableExtensions) {
@@ -909,6 +910,13 @@ private:
         }
 
         return requiredExtensions.empty();
+        */
+
+        return std::all_of(deviceExtensions.begin(), deviceExtensions.end(), [&availableExtensions](const char* requiredExtension) {
+            return std::any_of(availableExtensions.begin(), availableExtensions.end(), [requiredExtension](const VkExtensionProperties& extension) {
+                return strcmp(extension.extensionName, requiredExtension) == 0;
+            });
+        });
     }
 
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
