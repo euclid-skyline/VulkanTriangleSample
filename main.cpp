@@ -431,8 +431,10 @@ private:
         vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
         swapChainImages.resize(imageCount);
 		vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
-        
+    #ifndef NDEBUG
         std::cout << "Swap chain created with " << swapChainImages.size() << " images." << std::endl;
+    #endif // !NDEBUG
+
         // Store the format and extent for later use
         swapChainImageFormat = surfaceFormat.format;
 		swapChainExtent = extent;
