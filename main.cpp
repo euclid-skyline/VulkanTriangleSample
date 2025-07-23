@@ -105,7 +105,6 @@ private:
         glfwInit();
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        //glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window, this);
@@ -168,22 +167,7 @@ private:
         }
 
         vkDestroyCommandPool(device, commandPool, nullptr);
-		// The following cleanup lines are moved to cleanupSwapChain function
-        /*for (auto framebuffer : swapChainFramebuffers) {
-            vkDestroyFramebuffer(device, framebuffer, nullptr);
-        }*/
-
-		// The following three lines are moved to top of the cleanup function
-        //vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        //vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-		//vkDestroyRenderPass(device, renderPass, nullptr);
-        
-        // The following cleanup lines are moved to cleanupSwapChain function
-        /*for (auto imageView : swapChainImageViews) {
-            vkDestroyImageView(device, imageView, nullptr);
-        }*/
-
-        //vkDestroySwapchainKHR(device, swapChain, nullptr);
+		
         vkDestroyDevice(device, nullptr);
 
         if (enableValidationLayers) {
@@ -200,7 +184,9 @@ private:
 
     void recreateSwapChain() {
 		// Handle minimizing the window or resizing
-        int width = 0, height = 0;
+        int width = 0;
+        int height = 0;
+
         glfwGetFramebufferSize(window, &width, &height);
         while (width == 0 || height == 0) {
             glfwGetFramebufferSize(window, &width, &height);
@@ -902,16 +888,6 @@ private:
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-        /*
-        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-        for (const auto& extension : availableExtensions) {
-            requiredExtensions.erase(extension.extensionName);
-        }
-
-        return requiredExtensions.empty();
-        */
-
         return std::all_of(deviceExtensions.begin(), deviceExtensions.end(), [&availableExtensions](const char* requiredExtension) {
             return std::any_of(availableExtensions.begin(), availableExtensions.end(), [requiredExtension](const VkExtensionProperties& extension) {
                 return strcmp(extension.extensionName, requiredExtension) == 0;
@@ -976,22 +952,11 @@ private:
         std::vector<VkLayerProperties> availableLayers(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-        for (const char* layerName : validationLayers) {
-            bool layerFound = false;
-
-            for (const auto& layerProperties : availableLayers) {
-                if (strcmp(layerName, layerProperties.layerName) == 0) {
-                    layerFound = true;
-                    break;
-                }
-            }
-
-            if (!layerFound) {
-                return false;
-            }
-        }
-
-        return true;
+        return std::all_of(validationLayers.begin(), validationLayers.end(), [&availableLayers](const char* requiredLayer) {
+            return std::any_of(availableLayers.begin(), availableLayers.end(), [requiredLayer](const VkLayerProperties& layer) {
+                return strcmp(layer.layerName, requiredLayer) == 0;
+            });
+        });
     }
 
     static std::vector<char> readFile(const std::string& filename) {
